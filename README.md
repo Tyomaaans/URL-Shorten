@@ -72,14 +72,12 @@ Gin HTTP Server
 
 | Method | Endpoint | Access | Notes |
 | --- | --- | --- | --- |
-| POST | `/api/v1/auth/register` | Public | Daftarkan akun baru dengan email & password |
-| POST | `/api/v1/auth/login` | Public | Login dan dapatkan access token + refresh token |
-| POST | `/api/v1/auth/refresh` | Public | Perbarui access token menggunakan refresh token yang valid |
-| POST | `/api/v1/auth/logout` | Authenticated | Cabut sesi aktif saat ini dan invalidasi token |
+| POST | `/api/v1/auth/register` | Public | Register Account with Email & Password |
+| POST | `/api/v1/auth/login` | Public | Login & Get Access to Authenticated Endpoint |
+| POST | `/api/v1/auth/refresh` | Public | Refresh Rotate Token |
+| POST | `/api/v1/auth/logout` | Authenticated | Revoke Session & Token |
 
 </details>
-
----
 
 <details>
 <summary><strong>Users</strong> — 7 endpoints</summary>
@@ -89,10 +87,10 @@ Gin HTTP Server
 
 | Method | Endpoint | Access | Notes |
 | --- | --- | --- | --- |
-| GET | `/api/v1/users/me` | Authenticated | Ambil data profil pengguna yang sedang login |
-| PATCH | `/api/v1/users/me` | Authenticated | Perbarui sebagian data profil (nama, dll.) |
-| PUT | `/api/v1/users/me` | Authenticated | Ganti password akun saat ini |
-| DELETE | `/api/v1/users/me` | Authenticated | Hapus akun dan semua data yang terkait secara permanen |
+| GET | `/api/v1/users/me` | Authenticated | Get User Profile |
+| PATCH | `/api/v1/users/me` | Authenticated | Update Profile Name, Email, etc. |
+| PUT | `/api/v1/users/me` | Authenticated | Change Password |
+| DELETE | `/api/v1/users/me` | Authenticated | Delete User Permanent |
 
 </details>
 
@@ -101,16 +99,14 @@ Gin HTTP Server
 
 | Method | Endpoint | Access | Notes |
 | --- | --- | --- | --- |
-| GET | `/api/v1/users/me/sessions` | Authenticated | Tampilkan semua sesi aktif milik pengguna saat ini |
-| DELETE | `/api/v1/users/me/sessions/:sid` | Authenticated | Cabut satu sesi spesifik berdasarkan ID sesi (`sid`) |
-| DELETE | `/api/v1/users/me/sessions/others` | Authenticated | Cabut semua sesi aktif kecuali sesi saat ini |
-| DELETE | `/api/v1/users/me/sessions` | Authenticated | Cabut seluruh sesi aktif termasuk sesi saat ini |
+| GET | `/api/v1/users/me/sessions` | Authenticated | Get All Session User Logged In |
+| DELETE | `/api/v1/users/me/sessions/:sid` | Authenticated | Revoke Specific Session with Session ID (`sid`) |
+| DELETE | `/api/v1/users/me/sessions/others` | Authenticated | Revoke All Other Session except This Session |
+| DELETE | `/api/v1/users/me/sessions` | Authenticated | Revoke All Session |
 
 </details>
 
 </details>
-
----
 
 <details>
 <summary><strong>Shortens</strong> — 8 endpoints</summary>
@@ -120,8 +116,8 @@ Gin HTTP Server
 
 | Method | Endpoint | Access | Notes |
 | --- | --- | --- | --- |
-| POST | `/api/v1/s` | Public | Buat short link tanpa akun; expired otomatis dalam 3 hari |
-| GET | `/api/v1/s/:code` | Public | Redirect ke URL asli berdasarkan kode pendek (`code`) |
+| POST | `/api/v1/s` | Public | Create a Short Link with Expires for 3 Days |
+| GET | `/api/v1/s/:code` | Public | Redirect to Original URL (`code`) |
 
 </details>
 
@@ -130,18 +126,16 @@ Gin HTTP Server
 
 | Method | Endpoint | Access | Notes |
 | --- | --- | --- | --- |
-| POST | `/api/v1/shortens/me` | Authenticated | Buat short link dengan opsi `expires_at` kustom atau permanen |
-| GET | `/api/v1/shortens/me` | Authenticated | Tampilkan semua short link milik pengguna yang login |
-| GET | `/api/v1/shortens/me/:shid` | Authenticated | Ambil metadata lengkap dari satu short link berdasarkan ID |
-| PATCH | `/api/v1/shortens/me/:shid` | Authenticated | Perbarui target URL atau detail short link |
-| PUT | `/api/v1/shortens/me/:shid/status` | Authenticated | Ubah status aktif link via query string `?active=true/false` |
-| DELETE | `/api/v1/shortens/me/:shid` | Authenticated | Hapus short link dan bersihkan cache yang terkait |
+| POST | `/api/v1/shortens/me` | Authenticated | Create a Short Link with `expires_at` custom or permanent |
+| GET | `/api/v1/shortens/me` | Authenticated | Get All Short Link User Login |
+| GET | `/api/v1/shortens/me/:shid` | Authenticated | Get Details Short Link By Specific Shorten ID |
+| PATCH | `/api/v1/shortens/me/:shid` | Authenticated | Update Original URL or Expires |
+| PUT | `/api/v1/shortens/me/:shid/status` | Authenticated | Change Expires or Is Active Short Link with Query Param `?active=true/false` |
+| DELETE | `/api/v1/shortens/me/:shid` | Authenticated | Delete SHort Link & Clear Chache Short Link |
 
 </details>
 
 </details>
-
----
 
 <details>
 <summary><strong>Admin</strong> — 16 endpoints</summary>
@@ -151,11 +145,11 @@ Gin HTTP Server
 
 | Method | Endpoint | Access | Notes |
 | --- | --- | --- | --- |
-| GET | `/api/v1/admin/users` | Authenticated + Admin Secret | Tampilkan daftar semua pengguna terdaftar di sistem |
-| GET | `/api/v1/admin/users/:sub` | Authenticated + Admin Secret | Ambil data profil pengguna tertentu berdasarkan ID (`sub`) |
-| PATCH | `/api/v1/admin/users/:sub` | Authenticated + Admin Secret | Perbarui sebagian data profil pengguna target |
-| PUT | `/api/v1/admin/users/:sub` | Authenticated + Admin Secret | Reset atau ubah password pengguna target secara paksa |
-| DELETE | `/api/v1/admin/users/:sub` | Authenticated + Admin Secret | Hapus akun pengguna target beserta seluruh datanya |
+| GET | `/api/v1/admin/users` | Authenticated + Admin Secret | Retrieve a list of all registered users in the system |
+| GET | `/api/v1/admin/users/:sub` | Authenticated + Admin Secret | Retrieve the profile details of a specific user by ID (`sub`) |
+| PATCH | `/api/v1/admin/users/:sub` | Authenticated + Admin Secret | Partially update the profile information of a target user |
+| PUT | `/api/v1/admin/users/:sub` | Authenticated + Admin Secret | Force-reset or change the password of a target user |
+| DELETE | `/api/v1/admin/users/:sub` | Authenticated + Admin Secret | Permanently delete a target user account and all associated data |
 
 </details>
 
@@ -164,9 +158,9 @@ Gin HTTP Server
 
 | Method | Endpoint | Access | Notes |
 | --- | --- | --- | --- |
-| GET | `/api/v1/admin/users/:sub/sessions` | Authenticated + Admin Secret | Tampilkan semua sesi aktif milik pengguna target |
-| DELETE | `/api/v1/admin/users/:sub/sessions/:sid` | Authenticated + Admin Secret | Cabut satu sesi spesifik milik pengguna target berdasarkan `sid` |
-| DELETE | `/api/v1/admin/users/:sub/sessions` | Authenticated + Admin Secret | Cabut seluruh sesi aktif milik pengguna target |
+| GET | `/api/v1/admin/users/:sub/sessions` | Authenticated + Admin Secret | Retrieve all active sessions belonging to a target user |
+| DELETE | `/api/v1/admin/users/:sub/sessions/:sid` | Authenticated + Admin Secret | Revoke a specific user session by `sid` |
+| DELETE | `/api/v1/admin/users/:sub/sessions` | Authenticated + Admin Secret | Revoke all active sessions belonging to a target user |
 
 </details>
 
@@ -175,11 +169,11 @@ Gin HTTP Server
 
 | Method | Endpoint | Access | Notes |
 | --- | --- | --- | --- |
-| GET | `/api/v1/admin/shortens` | Authenticated + Admin Secret | Tampilkan semua short link yang ada di seluruh sistem |
-| GET | `/api/v1/admin/shortens/:shid` | Authenticated + Admin Secret | Ambil detail satu short link sistem berdasarkan ID |
-| GET | `/api/v1/admin/users/:sub/shortens` | Authenticated + Admin Secret | Tampilkan semua short link milik pengguna target (`sub`) |
-| PATCH | `/api/v1/admin/users/:sub/shortens/:shid` | Authenticated + Admin Secret | Perbarui short link milik pengguna target secara paksa |
-| DELETE | `/api/v1/admin/users/:sub/shortens/:shid` | Authenticated + Admin Secret | Hapus short link milik pengguna target secara paksa |
+| GET | `/api/v1/admin/shortens` | Authenticated + Admin Secret | Retrieve all short links across the entire system |
+| GET | `/api/v1/admin/shortens/:shid` | Authenticated + Admin Secret | Retrieve the details of a specific short link by ID |
+| GET | `/api/v1/admin/users/:sub/shortens` | Authenticated + Admin Secret | Retrieve all short links owned by a target user (`sub`) |
+| PATCH | `/api/v1/admin/users/:sub/shortens/:shid` | Authenticated + Admin Secret | Force-update a short link owned by a target user |
+| DELETE | `/api/v1/admin/users/:sub/shortens/:shid` | Authenticated + Admin Secret | Force-delete a short link owned by a target user |
 
 </details>
 
