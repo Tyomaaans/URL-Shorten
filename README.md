@@ -118,6 +118,8 @@ Gin HTTP Server
 | PUT | `/api/v1/shortens/me/:shid/status` | Authenticated | Update active status using query string (`?active=true/false`) |
 | DELETE | `/api/v1/shortens/me/:shid` | Authenticated | Delete link and purge associated cache |
 
+</details>
+
 <details>
 <summary><strong>Admin</strong> — 11 endpoints</summary>
 
