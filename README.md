@@ -152,7 +152,7 @@ Gin HTTP Server
 </details>
 
 <details>
-<summary><strong>Admin</strong> — 16 endpoints</summary>
+<summary><strong>Admin</strong> — 13 endpoints</summary>
 
 <br>
 
