@@ -1,0 +1,27 @@
+# Environment Variables
+.env
+.env.*
+!.env.example
+
+# Temporary and Build Binaries
+/tmp/
+/bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+main
+
+# IDE and Editor Files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Go Specific
+vendor/
