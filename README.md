@@ -70,6 +70,8 @@ Gin HTTP Server
 <details>
 <summary><strong>Auth</strong> — 4 endpoints</summary>
 
+<br>
+
 | Method | Endpoint | Access | Notes |
 | --- | --- | --- | --- |
 | POST | `/api/v1/auth/register` | Public | Register Account with Email & Password |
@@ -79,11 +81,17 @@ Gin HTTP Server
 
 </details>
 
+<br>
+
 <details>
 <summary><strong>Users</strong> — 7 endpoints</summary>
 
+<br>
+
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;<strong>CRUD</strong> — 4 endpoints</summary>
+
+<br>
 
 | Method | Endpoint | Access | Notes |
 | --- | --- | --- | --- |
@@ -94,8 +102,12 @@ Gin HTTP Server
 
 </details>
 
+<br>
+
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;<strong>Sessions</strong> — 4 endpoints</summary>
+
+<br>
 
 | Method | Endpoint | Access | Notes |
 | --- | --- | --- | --- |
@@ -106,13 +118,21 @@ Gin HTTP Server
 
 </details>
 
+<br>
+
 </details>
+
+<br>
 
 <details>
 <summary><strong>Shortens</strong> — 8 endpoints</summary>
 
+<br>
+
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;<strong>Public</strong> — 2 endpoints</summary>
+
+<br>
 
 | Method | Endpoint | Access | Notes |
 | --- | --- | --- | --- |
@@ -121,8 +141,12 @@ Gin HTTP Server
 
 </details>
 
+<br>
+
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;<strong>Authenticated</strong> — 6 endpoints</summary>
+
+<br>
 
 | Method | Endpoint | Access | Notes |
 | --- | --- | --- | --- |
@@ -135,13 +159,21 @@ Gin HTTP Server
 
 </details>
 
+<br>
+
 </details>
+
+<br>
 
 <details>
 <summary><strong>Admin</strong> — 16 endpoints</summary>
 
+<br>
+
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;<strong>User CRUD</strong> — 5 endpoints</summary>
+
+<br>
 
 | Method | Endpoint | Access | Notes |
 | --- | --- | --- | --- |
@@ -153,8 +185,12 @@ Gin HTTP Server
 
 </details>
 
+<br>
+
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;<strong>User Sessions</strong> — 3 endpoints</summary>
+
+<br>
 
 | Method | Endpoint | Access | Notes |
 | --- | --- | --- | --- |
@@ -164,8 +200,12 @@ Gin HTTP Server
 
 </details>
 
+<br>
+
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;<strong>Shortens</strong> — 5 endpoints</summary>
+
+<br>
 
 | Method | Endpoint | Access | Notes |
 | --- | --- | --- | --- |
@@ -176,6 +216,8 @@ Gin HTTP Server
 | DELETE | `/api/v1/admin/users/:sub/shortens/:shid` | Authenticated + Admin Secret | Force-delete a short link owned by a target user |
 
 </details>
+
+<br>
 
 </details>
 
