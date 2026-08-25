@@ -100,8 +100,6 @@ Gin HTTP Server
 
 </details>
 
-<br>
-
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;<strong>Sessions</strong> — 4 endpoints</summary>
 
@@ -115,8 +113,6 @@ Gin HTTP Server
 | DELETE | `/api/v1/users/me/sessions` | Authenticated | Revoke All Session |
 
 </details>
-
-<br>
 
 </details>
 
