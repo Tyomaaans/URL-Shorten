@@ -81,8 +81,6 @@ Gin HTTP Server
 
 </details>
 
-<br>
-
 <details>
 <summary><strong>Users</strong> — 7 endpoints</summary>
 
