@@ -82,7 +82,7 @@ Gin HTTP Server
 </details>
 
 <details>
-<summary><strong>Users</strong> — 7 endpoints</summary>
+<summary><strong>Users</strong> — 8 endpoints</summary>
 
 <br>
 
@@ -116,8 +116,6 @@ Gin HTTP Server
 
 </details>
 
-<br>
-
 <details>
 <summary><strong>Shortens</strong> — 8 endpoints</summary>
 
@@ -135,8 +133,6 @@ Gin HTTP Server
 
 </details>
 
-<br>
-
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;<strong>Authenticated</strong> — 6 endpoints</summary>
 
@@ -153,11 +149,7 @@ Gin HTTP Server
 
 </details>
 
-<br>
-
 </details>
-
-<br>
 
 <details>
 <summary><strong>Admin</strong> — 16 endpoints</summary>
@@ -179,8 +171,6 @@ Gin HTTP Server
 
 </details>
 
-<br>
-
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;<strong>User Sessions</strong> — 3 endpoints</summary>
 
@@ -193,8 +183,6 @@ Gin HTTP Server
 | DELETE | `/api/v1/admin/users/:sub/sessions` | Authenticated + Admin Secret | Revoke all active sessions belonging to a target user |
 
 </details>
-
-<br>
 
 <details>
 <summary>&nbsp;&nbsp;&nbsp;&nbsp;<strong>Shortens</strong> — 5 endpoints</summary>
@@ -210,8 +198,6 @@ Gin HTTP Server
 | DELETE | `/api/v1/admin/users/:sub/shortens/:shid` | Authenticated + Admin Secret | Force-delete a short link owned by a target user |
 
 </details>
-
-<br>
 
 </details>
 
