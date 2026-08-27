@@ -108,7 +108,12 @@ func (s *userService) UpdateUser(ctx context.Context, update *UpdateUserRequest)
 		return nil, err
 	}
 
-	return ToUserResponse(user), nil
+	res, err := ToUserResponse(user)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
 }
 
 func (s *userService) UpdatePassword(ctx context.Context, update UpdatePasswordRequest) error {
@@ -155,14 +160,9 @@ func (s *userService) GetUsers(ctx context.Context) ([]UserResponse, error) {
 		return nil, err
 	}
 
-	res := ToUserListResponse(users)
-	for i := range users {
-		userID, err := uuidToBase64(users[i].ID)
-        if err != nil {
-            return nil, err
-        }
-
-		res[i].ID = userID
+	res, err := ToUserListResponse(users)
+	if err != nil {
+		return nil, err
 	}
 
 	return res, nil
@@ -179,12 +179,12 @@ func (s *userService) GetUserByID(ctx context.Context, rawUserID string) (*UserR
         return nil, err
     }
 
-	user.ID, err = uuidToBase64(user.ID)
+	res, err := ToUserResponse(user)
 	if err != nil {
 		return nil, err
 	}
 
-    return ToUserResponse(user), nil
+    return res, nil
 }
 
 func (s *userService) DeleteUser(ctx context.Context, rawUserID string) error {
@@ -229,12 +229,12 @@ func (s *userService) LoginUser(ctx context.Context, agent, ip string, req Login
 		return nil, nil, err
 	}
 
-	user.ID, err = uuidToBase64(user.ID)
+	res, err := ToUserResponse(user)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return ToUserResponse(user), tokens.ToTokenPairResponse(*tokenPair), nil
+	return res, tokens.ToTokenPairResponse(*tokenPair), nil
 }
 
 func (s *userService) RefreshToken(ctx context.Context, refreshToken string) (*tokens.TokenPairResponse, bool, error) {
@@ -341,14 +341,6 @@ func (s *userService) RevokeAllSessions(ctx context.Context, rawUserID string) e
 }
 
 // Internal Helper
-
-func uuidToBase64(uuidStr string) (string, error) {
-	parsed, err := uuid.Parse(uuidStr)
-	if err != nil {
-		return "", err
-	}
-	return base64.RawURLEncoding.EncodeToString(parsed[:]), nil
-}
 
 func parseOrDecodeUUID(input string) (string, error) {
     if input == "" {

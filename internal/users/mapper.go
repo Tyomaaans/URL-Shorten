@@ -1,9 +1,12 @@
 package users
 
 import (
+	"encoding/base64"
 	"url-shorten/internal/domains"
 	"url-shorten/internal/infrastructure/postgres"
 	"url-shorten/internal/shortens"
+
+	"github.com/google/uuid"
 )
 
 // User to Storage <-> Entitu
@@ -84,21 +87,42 @@ func ToUpdatePasswordEntity(req UpdatePasswordRequest) *domains.UpdatePasswordEn
 
 // User Response
 
-func ToUserResponse(e *domains.UserEntity) *UserResponse {
+func ToUserResponse(e *domains.UserEntity) (*UserResponse, error) {
+	if e == nil {
+		return nil, nil
+	}
+
+	sub, err := uuidToBase64(e.ID)
+	if err != nil {
+		return nil, err
+	}
+
 	return &UserResponse{
-		ID:         e.ID,
+		ID:         sub,
 		Name:       e.Name,
 		Email:      e.Email,
 		RememberMe: e.RememberMe,
-	}
+	}, nil
 }
 
-func ToUserListResponse(list []domains.UserEntity) []UserResponse {
+func ToUserListResponse(list []domains.UserEntity) ([]UserResponse, error) {
 	result := make([]UserResponse, len(list))
 
 	for i := range list {
-		result[i] = *ToUserResponse(&list[i])
+		res, err := ToUserResponse(&list[i])
+		if err != nil {
+			return nil, err
+		}
+		result[i] = *res
 	}
 
-	return result
+	return result, nil
+}
+
+func uuidToBase64(uuidStr string) (string, error) {
+	parsed, err := uuid.Parse(uuidStr)
+	if err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(parsed[:]), nil
 }
