@@ -141,7 +141,6 @@ Compose also reads `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DB`.
 make build
 make test
 make vet
-docker compose config --quiet
 ```
 
 Regenerate Swagger after changing handler annotations:
