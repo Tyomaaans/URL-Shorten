@@ -1,35 +1,23 @@
 package middleware
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 
-	"url-shorten/internal/tokens"
+	"url-shorten/internal/auth-session/token"
 	"url-shorten/pkg"
 )
 
-type (
-	contextKey string
-)
-
-const (
-	IsAdminKey contextKey = "isAdmin"
-)
-
-
 type AuthMiddleware struct {
-	jwtService tokens.JWTService
-	adminSecret string
+	tokenSvc token.JWTService
 }
 
-func NewAuthMiddleware(jwtService tokens.JWTService, adminSecret string) *AuthMiddleware {
+func NewAuthMiddleware(tokenSvc token.JWTService) *AuthMiddleware {
 	return &AuthMiddleware{
-		jwtService: jwtService,
-		adminSecret: adminSecret,
+		tokenSvc: tokenSvc,
 	}
 }
 
@@ -41,13 +29,15 @@ func (m *AuthMiddleware) Authenticate() gin.HandlerFunc {
 			return
 		}
 
-		claims, err := m.jwtService.ValidateAccessToken(c.Request.Context(), accessToken)
+		claims, err := m.tokenSvc.ValidateAccessToken(c.Request.Context(), accessToken)
 		if err != nil {
 			switch {
 			case errors.Is(err, pkg.ErrTokenExpired):
 				abortWithError(c, http.StatusUnauthorized, "access token expired", "AUTH_TOKEN_EXPIRED")
 			case errors.Is(err, pkg.ErrTokenRevoked):
 				abortWithError(c, http.StatusUnauthorized, "token has been revoked", "AUTH_TOKEN_REVOKED")
+			case errors.Is(err, pkg.ErrTokenBlocked):
+				abortWithError(c, http.StatusUnauthorized, "token is blocked", "AUTH_TOKEN_BLOCKED")
 			default:
 				abortWithError(c, http.StatusUnauthorized, "invalid token", "AUTH_TOKEN_INVALID")
 			}
@@ -56,36 +46,52 @@ func (m *AuthMiddleware) Authenticate() gin.HandlerFunc {
 
 		c.Set("userID", claims.UserID)
 		c.Set("sessionID", claims.SessionID)
+		c.Set("role", string(claims.Role))
 
 		c.Next()
 	}
 }
 
-func (m *AuthMiddleware) AdminSecretMiddleware() gin.HandlerFunc {
+func (m *AuthMiddleware) RequireRole(roles ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		adminToken := c.GetHeader("X-Admin-Secret")
-
-		if adminToken != m.adminSecret {
-			abortWithError(c, http.StatusForbidden, "access denied", "AUTHZ_ROLE_FORBIDDEN")
+		role, exists := c.Get("role")
+		if !exists {
+			abortWithError(c, http.StatusForbidden, "role not found in token", "AUTHZ_ROLE_MISSING")
 			return
 		}
 
-		ctx := context.WithValue(c.Request.Context(), IsAdminKey, true)
-		c.Request = c.Request.WithContext(ctx)
-		
-		c.Next()
+		roleStr, ok := role.(string)
+		if !ok {
+			abortWithError(c, http.StatusForbidden, "invalid role format", "AUTHZ_ROLE_INVALID")
+			return
+		}
+
+		for _, r := range roles {
+			if roleStr == r {
+				c.Next()
+				return
+			}
+		}
+
+		abortWithError(c, http.StatusForbidden, "access denied", "AUTHZ_ROLE_FORBIDDEN")
 	}
 }
 
 func extractBearerToken(c *gin.Context) (string, bool) {
 	header := c.GetHeader("Authorization")
-	if header == "" || !strings.HasPrefix(header, "Bearer ") {
+	if header == "" {
 		return "", false
 	}
+
+	if !strings.HasPrefix(header, "Bearer ") {
+		return "", false
+	}
+
 	token := strings.TrimPrefix(header, "Bearer ")
 	if token == "" {
 		return "", false
 	}
+
 	return token, true
 }
 
@@ -95,4 +101,3 @@ func abortWithError(c *gin.Context, status int, message, code string) {
 		"code":  code,
 	})
 }
-

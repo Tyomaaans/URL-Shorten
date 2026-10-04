@@ -1,266 +1,153 @@
 # URL Shortener API
 
-A production-ready REST API for high-performance URL shortening and link management built with Go. Designed for low-latency redirection and automated lifecycle management — featuring public ephemeral links, authenticated full link ownership, Redis caching with TTL, and automated background cleanup via Go Workers.
+A URL shortening and link management API built with Go, Gin, PostgreSQL, and Redis. This repository is the standalone version of the URL shortener used by my web profile and includes its shared authentication flow.
 
----
+## Live project
 
-## Architecture Overview
+- Demo page: [https://tyomaaans.cloud/url-shortener](https://tyomaaans.cloud/url-shortener)
+- API base URL: `https://api.tyomaaans.cloud/v1/url-shortener`
+- Swagger UI: [https://api.tyomaaans.cloud/swagger/url-shortener/index.html](https://api.tyomaaans.cloud/swagger/url-shortener/index.html)
 
-```
-Client
-  │
-  ▼
-Gin HTTP Server
-  │
-  ├── Auth Middleware & Admin Secret Middleware
-  │     └── Token validation via Redis (no DB round-trip)
-  │
-  ├── Handlers → Services → Repositories
-  │                             │
-  │                         PostgreSQL (Persistent URL & metadata store)
-  │
-  └── Redis Cache
-        ├── Fast link resolution (code -> original URL)
-        ├── Dynamic TTL matching link expiration date
-        └── Permanent URL caching for authenticated users
-  │
-  └── Go Background Worker (Every 1 min tick)
-        └── Scans expired links → syncs DB `is_active = false` → purges Redis cache
-
-```
-
----
-
-## Tech Stack
-
-| Layer | Technology | Reason |
-| --- | --- | --- |
-| Language | Go | High performance, lightweight goroutines for worker processes |
-| Framework | Gin | Fast HTTP routing and clean middleware chaining |
-| Database | PostgreSQL | Relational datastore for persistent URL metadata and user ownership |
-| Cache Store | Redis | Sub-millisecond URL redirection lookups with TTL enforcement |
-| Background Jobs | Go Ticker Worker | Periodically syncs expired state between cache and database |
-| Containerization | Docker & Docker Compose | Consistent local and containerized deployments |
-
----
+Cookie-based requests such as refresh, heartbeat, and logout must include credentials. In a browser client, use `credentials: "include"`.
 
 ## Features
 
-### Dual-Tier Link Generation
+- Public short links with a fixed three-day expiration.
+- Authenticated short links with optional custom expiration.
+- Redis-first redirects with PostgreSQL fallback.
+- Link ownership, listing, detail, update, status, and delete operations.
+- A background worker that marks expired links inactive and clears their cache.
+- Registration, login, refresh token rotation, heartbeat, logout, and multi-session management.
+- User profile and admin user management.
+- Admin link inspection and management across users.
+- Absolute HTTP(S) URL validation for every create and update flow.
+- Exact sliding-window limits for public link creation and token-bucket policies for other routes.
+- Swagger documentation and a health endpoint.
 
-* **Public Ephemeral Shortening:** Guest users can quickly shorten URLs without registering. Public links strictly enforce a **3-day expiration time (`expires_at`)**.
-* **Authenticated Custom Expiration:** Logged-in users gain full control to specify custom expiration timestamps or create permanent links with no expiry.
+## Main routes
 
-### High-Performance Redis Caching & Expiry Lifecycle
+All application routes use the `/v1/url-shortener` prefix.
 
-* **Redis-First Redirection:** All active short links are cached in Redis to achieve instant redirects (`GET /s/:code`) without database load.
-* **Synchronized TTL:** Links with an `expires_at` timestamp inherit a matching TTL inside Redis and self-expire automatically. Permanent links persist continuously until deleted or deactivated.
-* **Automated Worker Cleanup:** A Go background worker runs every minute to detect newly expired URLs in PostgreSQL, update their state to `is_active = false`, and evict stale keys from Redis.
+### Short links
 
-### Granular Link Management
+| Method | Route | Access |
+| --- | --- | --- |
+| POST | `/s` | Public |
+| GET | `/s/:code` | Public redirect |
+| POST | `/shortens/me` | Bearer token |
+| GET | `/shortens/me` | Bearer token |
+| GET | `/shortens/me/:shid` | Bearer token |
+| PATCH | `/shortens/me/:shid` | Bearer token |
+| PUT | `/shortens/me/:shid?status=active` | Bearer token |
+| DELETE | `/shortens/me/:shid` | Bearer token |
+| GET | `/admin/shortens` | Admin bearer token |
+| GET | `/admin/shortens/:shid` | Admin bearer token |
+| GET | `/admin/users/:sub/shortens` | Admin bearer token |
+| PATCH | `/admin/users/:sub/shortens/:shid` | Admin bearer token |
+| PUT | `/admin/users/:sub/shortens/:shid?status=active` | Admin bearer token |
+| DELETE | `/admin/users/:sub/shortens/:shid` | Admin bearer token |
 
-* **User Link Dashboard:** Authenticated users can list, inspect, update destinations, toggle active states, or soft-delete their own short URLs.
-* **Dynamic Status Toggling:** Toggle short link availability on demand via explicit query parameters (`PUT /s/:shid/status?active=true|false`).
-* **Admin Link Supervision:** System administrators can audit, modify destination URLs, or remove short links across all users.
+### Authentication and users
 
----
+| Method | Route | Access |
+| --- | --- | --- |
+| POST | `/auth/register` | Public |
+| POST | `/auth/login` | Public |
+| POST | `/auth/refresh` | Session cookies |
+| POST | `/auth/heartbeat` | Session cookie |
+| POST | `/auth/logout` | Bearer token and cookies |
+| GET, PATCH, DELETE | `/users/me` | Bearer token |
+| GET, DELETE | `/users/me/sessions` | Bearer token |
+| DELETE | `/users/me/sessions/:sid` | Bearer token |
+| DELETE | `/users/me/sessions/others` | Bearer token |
+| GET, PATCH, DELETE | `/admin/users/:sub` | Admin bearer token |
+| GET, DELETE | `/admin/users/:sub/sessions` | Admin bearer token |
+| DELETE | `/admin/users/:sub/sessions/:sid` | Admin bearer token |
 
-## API Endpoints
+`GET /health` and `GET /swagger/url-shortener/*any` are public utility routes.
 
-<details>
-<summary><strong>Auth</strong> — 4 endpoints</summary>
+## Public rate limit
 
-<br>
+Public link creation uses two rolling 72-hour windows:
 
-| Method | Endpoint | Access | Notes |
-| --- | --- | --- | --- |
-| POST | `/api/v1/auth/register` | Public | Register Account with Email & Password |
-| POST | `/api/v1/auth/login` | Public | Login & Get Access to Authenticated Endpoint |
-| POST | `/api/v1/auth/refresh` | Public | Refresh Rotate Token |
-| POST | `/api/v1/auth/logout` | Authenticated | Revoke Session & Token |
+- 5 attempts for the normalized IP and User-Agent combination.
+- 25 attempts for the IP address to limit User-Agent rotation.
 
-</details>
+Rate-limited responses include `Retry-After`, `X-RateLimit-*` headers, `requests_left`, and `reset_at`.
 
-<details>
-<summary><strong>Users</strong> — 8 endpoints</summary>
+## Project structure
 
-<br>
+```text
+.
+├── docs/url-shortener
+├── internal
+│   ├── auth-session
+│   ├── url-shortener
+│   │   ├── domain
+│   │   ├── shortener
+│   │   └── user
+│   ├── config
+│   ├── infrastructure
+│   ├── middleware
+│   └── router
+├── pkg
+├── main.go
+└── docker-compose.yml
+```
 
-<details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;<strong>CRUD</strong> — 4 endpoints</summary>
+The auth-session package is included because this standalone API owns its user and session routes. Both features use the same user table, JWT service, Redis client, and middleware.
 
-<br>
+## Run locally
 
-| Method | Endpoint | Access | Notes |
-| --- | --- | --- | --- |
-| GET | `/api/v1/users/me` | Authenticated | Get User Profile |
-| PATCH | `/api/v1/users/me` | Authenticated | Update Profile Name, Email, etc. |
-| PUT | `/api/v1/users/me` | Authenticated | Change Password |
-| DELETE | `/api/v1/users/me` | Authenticated | Delete User Permanent |
+Requirements:
 
-</details>
-
-<details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;<strong>Sessions</strong> — 4 endpoints</summary>
-
-<br>
-
-| Method | Endpoint | Access | Notes |
-| --- | --- | --- | --- |
-| GET | `/api/v1/users/me/sessions` | Authenticated | Get All Session User Logged In |
-| DELETE | `/api/v1/users/me/sessions/:sid` | Authenticated | Revoke Specific Session with Session ID (`sid`) |
-| DELETE | `/api/v1/users/me/sessions/others` | Authenticated | Revoke All Other Session except This Session |
-| DELETE | `/api/v1/users/me/sessions` | Authenticated | Revoke All Session |
-
-</details>
-
-</details>
-
-<details>
-<summary><strong>Shortens</strong> — 8 endpoints</summary>
-
-<br>
-
-<details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;<strong>Public</strong> — 2 endpoints</summary>
-
-<br>
-
-| Method | Endpoint | Access | Notes |
-| --- | --- | --- | --- |
-| POST | `/api/v1/s` | Public | Create a Short Link with Expires for 3 Days |
-| GET | `/api/v1/s/:code` | Public | Redirect to Original URL (`code`) |
-
-</details>
-
-<details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;<strong>Authenticated</strong> — 6 endpoints</summary>
-
-<br>
-
-| Method | Endpoint | Access | Notes |
-| --- | --- | --- | --- |
-| POST | `/api/v1/shortens/me` | Authenticated | Create a Short Link with `expires_at` custom or permanent |
-| GET | `/api/v1/shortens/me` | Authenticated | Get All Short Link User Login |
-| GET | `/api/v1/shortens/me/:shid` | Authenticated | Get Details Short Link By Specific Shorten ID |
-| PATCH | `/api/v1/shortens/me/:shid` | Authenticated | Update Original URL or Expires |
-| PUT | `/api/v1/shortens/me/:shid/status` | Authenticated | Change Expires or Is Active Short Link with Query Param `?active=true/false` |
-| DELETE | `/api/v1/shortens/me/:shid` | Authenticated | Delete SHort Link & Clear Chache Short Link |
-
-</details>
-
-</details>
-
-<details>
-<summary><strong>Admin</strong> — 13 endpoints</summary>
-
-<br>
-
-<details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;<strong>User CRUD</strong> — 5 endpoints</summary>
-
-<br>
-
-| Method | Endpoint | Access | Notes |
-| --- | --- | --- | --- |
-| GET | `/api/v1/admin/users` | Authenticated + Admin Secret | Retrieve a list of all registered users in the system |
-| GET | `/api/v1/admin/users/:sub` | Authenticated + Admin Secret | Retrieve the profile details of a specific user by ID (`sub`) |
-| PATCH | `/api/v1/admin/users/:sub` | Authenticated + Admin Secret | Partially update the profile information of a target user |
-| PUT | `/api/v1/admin/users/:sub` | Authenticated + Admin Secret | Force-reset or change the password of a target user |
-| DELETE | `/api/v1/admin/users/:sub` | Authenticated + Admin Secret | Permanently delete a target user account and all associated data |
-
-</details>
-
-<details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;<strong>User Sessions</strong> — 3 endpoints</summary>
-
-<br>
-
-| Method | Endpoint | Access | Notes |
-| --- | --- | --- | --- |
-| GET | `/api/v1/admin/users/:sub/sessions` | Authenticated + Admin Secret | Retrieve all active sessions belonging to a target user |
-| DELETE | `/api/v1/admin/users/:sub/sessions/:sid` | Authenticated + Admin Secret | Revoke a specific user session by `sid` |
-| DELETE | `/api/v1/admin/users/:sub/sessions` | Authenticated + Admin Secret | Revoke all active sessions belonging to a target user |
-
-</details>
-
-<details>
-<summary>&nbsp;&nbsp;&nbsp;&nbsp;<strong>Shortens</strong> — 5 endpoints</summary>
-
-<br>
-
-| Method | Endpoint | Access | Notes |
-| --- | --- | --- | --- |
-| GET | `/api/v1/admin/shortens` | Authenticated + Admin Secret | Retrieve all short links across the entire system |
-| GET | `/api/v1/admin/shortens/:shid` | Authenticated + Admin Secret | Retrieve the details of a specific short link by ID |
-| GET | `/api/v1/admin/users/:sub/shortens` | Authenticated + Admin Secret | Retrieve all short links owned by a target user (`sub`) |
-| PATCH | `/api/v1/admin/users/:sub/shortens/:shid` | Authenticated + Admin Secret | Force-update a short link owned by a target user |
-| DELETE | `/api/v1/admin/users/:sub/shortens/:shid` | Authenticated + Admin Secret | Force-delete a short link owned by a target user |
-
-</details>
-
-</details>
-
----
-
-## Getting Started
-
-### Prerequisites
-
-* [Docker](https://docs.docker.com/get-docker/) & Docker Compose
-* Go 1.22+
-
-### Run Locally
+- Go 1.26.6
+- Docker and Docker Compose
 
 ```bash
-# Clone the repository
-git clone https://github.com/Tyomaaans/Auth-Session.git
-cd auth-session-api
-
-# Copy environment variables
 cp .env.example .env
-
-# Start PostgreSQL and Redis containers
-docker compose up -d
-
+docker compose up --build
 ```
 
-### Environment Variables
+For a direct Go run, start PostgreSQL and Redis first, update `.env` so the service addresses are reachable from the host, then run:
 
-See `.env.example` for all required variables. Key configs:
-
-```env
-# App
-APP_ENV=
-APP_PORT=
-APP_URL=
-
-# Database
-POSTGRES_USER=
-POSTGRES_PASSWORD=
-POSTGRES_DB=
-DATABASE_URL=
-
-# Redis
-REDIS_ADDR=
-REDIS_PASSWORD=
-
-# Admin
-ADMIN_SECRET_KEY=
-
+```bash
+go run .
 ```
 
----
+The application migrates the `users` and `shorten_storages` tables and creates an admin user from `ADMIN_PASSWORD` when no admin exists.
 
-## Project Status
+## Configuration
 
-| Feature | Status | Notes |
-| --- | --- | --- |
-| Public Shorten Endpoint (`POST /s`) | ✅ Done | Auto expiration fixed at 3 days |
-| Public Redirection (`GET /s/:code`) | ✅ Done | Fetches from Redis cache first |
-| Authenticated Shorten Creation | ✅ Done | Supports custom `expires_at` or permanent links |
-| Redis TTL & Permanent Caching | ✅ Done | Automatic TTL for expiring links, zero TTL for permanent |
-| Active Status Toggle Query | ✅ Done | `/shortens/me/:shid/status?active=true/false` |
-| Go Cleanup Worker | ✅ Done | Runs every 1 min: sets DB `is_active = false` & evicts Redis |
-| User Link Dashboard CRUD | ✅ Done | View, update, or remove personal links |
-| Admin Link Management | ✅ Done | Inspect, modify, or purge any link across users |
+| Variable | Description |
+| --- | --- |
+| `APP_ENV` | Use `production` to enable Secure cookies |
+| `APP_PORT` | HTTP server port |
+| `APP_URL` | Public application URL |
+| `DATABASE_URL` | PostgreSQL connection string |
+| `REDIS_ADDR` | Redis host and port |
+| `REDIS_PASSWORD` | Redis password |
+| `JWT_SECRET_KEY` | JWT signing secret |
+| `JWT_EXPIRY` | Access token duration, for example `15m` |
+| `DEFAULT_REFRESH_EXPIRY` | Remembered session duration |
+| `SHORT_REFRESH_EXPIRY` | Non-remembered session duration |
+| `ADMIN_PASSWORD` | Password used when seeding the admin account |
+
+Compose also reads `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DB`.
+
+## Development checks
+
+```bash
+make build
+make test
+make vet
+docker compose config --quiet
+```
+
+Regenerate Swagger after changing handler annotations:
+
+```bash
+make swagger
+```
+
+The tests cover user services and handlers, short-link URL validation, route policy order, pagination, validators, and rate-limit behavior.

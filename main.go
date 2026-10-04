@@ -3,90 +3,100 @@ package main
 import (
 	"context"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/gin-gonic/gin"
+
+	"url-shorten/internal/auth-session/session"
+	"url-shorten/internal/auth-session/token"
+	"url-shorten/internal/auth-session/user"
 	"url-shorten/internal/config"
 	"url-shorten/internal/infrastructure/postgres"
 	"url-shorten/internal/infrastructure/redis"
 	"url-shorten/internal/middleware"
 	"url-shorten/internal/router"
-	"url-shorten/internal/sessions"
-	"url-shorten/internal/tokens"
-	"url-shorten/internal/users"
-	"url-shorten/internal/shortens"
+	"url-shorten/internal/url-shortener/shortener"
+	shortenerUser "url-shorten/internal/url-shortener/user"
 	"url-shorten/pkg"
+
+	_ "url-shorten/docs/url-shortener"
 )
 
 func main() {
+	gin.SetMode(gin.ReleaseMode)
+
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	cfg := config.NewConfig()
-	validate := pkg.New()
 
-	redisClient := redis.NewRedisClient(cfg.REDISaddr, cfg.REDISpassword)
-
-	db, err := postgres.NewPostgresDB(cfg.DSN)
+	db, err := postgres.NewPostgresDB(cfg.DatabaseURL, cfg.AdminPassword)
 	if err != nil {
 		log.Fatalf("failed to connect postgres: %v", err)
 	}
 
-	sessionSvc     := sessions.NewSessionService(redisClient)
-	tokenSvc       := tokens.NewJWTService(cfg.JWTSecretKey, cfg.JWTExpiry, cfg.DefaultRefreshExpiry, cfg.ShortRefreshExpiry, redisClient, sessionSvc)
+	redisClient, err := redis.NewRedisClient(cfg.RedisAddr, cfg.RedisPassword)
+	if err != nil {
+		log.Fatalf("failed to connect redis: %v", err)
+	}
+	defer redisClient.Close()
 
-	userRepo       := users.NewUserRepository(db)
-	userService    := users.NewUserService(userRepo, tokenSvc, sessionSvc, validate)
-	userHandler    := users.NewUserHandler(userService, cfg.DefaultRefreshExpiry, cfg.ShortRefreshExpiry)
-
-	shortenRepo    := shortens.NewShortenRepository(db)
-	shortenService := shortens.NewShortenService(shortenRepo, redisClient, validate)
-	shortenHandler := shortens.NewShortenHandler(shortenService)
-
-	authMiddleware := middleware.NewAuthMiddleware(tokenSvc, cfg.AdminSecretKey)
-
-	r := routes.NewUserRouter(userHandler, shortenHandler, authMiddleware)
-
-	go shortenService.StartExpiryWorker(context.Background())
+	validate    := pkg.NewValidator()
 	
+	sessionSvc  := session.NewSessionService(redisClient)
+	tokenSvc    := token.NewJWTService(cfg.JWTSecretKey, cfg.JWTExpiry, cfg.DefaultRefreshExpiry, cfg.ShortRefreshExpiry, redisClient, sessionSvc)
+	userRepo    := user.NewUserRepository(db)
+	userSvc     := user.NewUserService(userRepo, tokenSvc, sessionSvc, validate)
+	userHandler := shortenerUser.NewUserHandler(userSvc, cfg.DefaultRefreshExpiry, cfg.ShortRefreshExpiry, cfg.SecureCookies)
+	
+	shortenRepo    := shortener.NewShortenRepository(db)
+	shortenSvc     := shortener.NewShortenService(shortenRepo, redisClient, validate)
+	shortenHandler := shortener.NewShortenHandler(shortenSvc)
+
+	authMiddleware := middleware.NewAuthMiddleware(tokenSvc)
+	rateLimiter    := middleware.NewRateLimiter(redisClient, logger)
+	
+	r := router.NewRouter(userHandler, shortenHandler, authMiddleware, rateLimiter)
+
+	workerCtx, cancelWorker := context.WithCancel(context.Background())
+	defer cancelWorker()
+	go shortenSvc.StartExpiryWorker(workerCtx)
+
 	srv := &http.Server{
-		Addr:         ":" + cfg.APPport,
-		Handler:      r,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  30 * time.Second,
+		Addr:              ":" + cfg.AppPort,
+		Handler:           r,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       30 * time.Second,
+		MaxHeaderBytes:    1 << 20,
 	}
 
 	go func() {
-		log.Printf("Server running on :%s", cfg.APPport)
+		log.Printf("server running on :%s", cfg.AppPort)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("listen: %s\n", err)
+			log.Fatalf("listen: %v", err)
 		}
 	}()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-
-	log.Println("Shutting down server...")
+	cancelWorker()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatalf("Server forced to shutdown: %v", err)
-	}
-
-	if err := redisClient.Close(); err != nil {
-		log.Printf("Redis close error: %v", err)
+		log.Fatalf("server shutdown: %v", err)
 	}
 
 	sqlDB, err := db.DB()
 	if err == nil {
 		if err := sqlDB.Close(); err != nil {
-			log.Printf("DB close error: %v", err)
+			log.Printf("postgres close error: %v", err)
 		}
 	}
-
-	log.Println("Server exited")
 }

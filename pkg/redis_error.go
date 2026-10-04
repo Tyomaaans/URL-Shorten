@@ -21,7 +21,6 @@ var (
 	ErrRedisInternal         = errors.New("internal redis error")
 )
 
-// HandleRedisError map raw Redis error to domain error to prevent it from leaking out.
 func HandleRedisError(err error) error {
 	if err == nil {
 		return nil
@@ -43,7 +42,6 @@ func HandleRedisError(err error) error {
 	return fmt.Errorf("%w: %s", ErrRedisInternal, err.Error())
 }
 
-// HandleRedisSetNX handle response SetNX (lock/deduplication).
 func HandleRedisSetNX(success bool, err error, isLock bool) error {
 	if err != nil {
 		return HandleRedisError(err)

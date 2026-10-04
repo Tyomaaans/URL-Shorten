@@ -20,8 +20,5 @@ var (
 	// Credentials
 	ErrInvalidCredentials = errors.New("invalid email or password")
 	ErrInvalidPassword    = errors.New("invalid password")
-	ErrForbidden          = errors.New("access denied")
-
-	// Input
-	ErrInvalidInput = errors.New("")
+	ErrForbidden          = errors.New("acces denied")
 )
