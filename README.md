@@ -4,13 +4,12 @@ A URL shortening and link management API built with Go, Gin, PostgreSQL, and Red
 
 ## Live project
 
-- Overview  : [https://tyomaaans.cloud/projects/url-shortener](https://tyomaaans.cloud/projects/url-shortener)
-- Live Demo : [https://tyomaaans.cloud/projects/url-shortener](https://tyomaaans.cloud/projects/url-shortener/demo)
+- **Overview:** https://tyomaaans.cloud/projects/url-shortener
+- **Live Demo:** https://tyomaaans.cloud/projects/url-shortener/demo
+- **API Base URL:** `https://api.tyomaaans.cloud/v1/url-shortener`
+- **Swagger UI:** https://api.tyomaaans.cloud/swagger/url-shortener/index.html
 
-- API base URL: `https://api.tyomaaans.cloud/v1/url-shortener`
-- Swagger UI: [https://api.tyomaaans.cloud/swagger/url-shortener/index.html](https://api.tyomaaans.cloud/swagger/url-shortener/index.html)
-
-Cookie-based requests such as refresh, heartbeat, and logout must include credentials. In a browser client, use `credentials: "include"`.
+> **Note:** Cookie-based requests such as refresh, heartbeat, and logout must include credentials. In a browser client, use `credentials: "include"`.
 
 ## Features
 
