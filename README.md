@@ -4,7 +4,9 @@ A URL shortening and link management API built with Go, Gin, PostgreSQL, and Red
 
 ## Live project
 
-- Demo page: [https://tyomaaans.cloud/url-shortener](https://tyomaaans.cloud/url-shortener)
+- Overview  : [https://tyomaaans.cloud/projects/url-shortener](https://tyomaaans.cloud/projects/url-shortener)
+- Live Demo : [https://tyomaaans.cloud/projects/url-shortener](https://tyomaaans.cloud/projects/url-shortener/demo)
+
 - API base URL: `https://api.tyomaaans.cloud/v1/url-shortener`
 - Swagger UI: [https://api.tyomaaans.cloud/swagger/url-shortener/index.html](https://api.tyomaaans.cloud/swagger/url-shortener/index.html)
 
